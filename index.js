@@ -51,6 +51,7 @@ function clearAttribute(attributeCode, doNotClearOnInit, isDictionary) {
 function onCardInitialize() {
   AgreeLetterTask();
 }
+
 function AgreeLetterTask() {
   debugger;
   var stateTask = EdocsApi.getCaseTaskDataByCode("AgreeLetter")?.state;
@@ -115,6 +116,9 @@ function AgreeLetterTask() {
     setPropertyDisabled("LegaladdressOrg", false);
     setPropertyDisabled("RegNumber", false);
     setPropertyDisabled("RegDate", false);
+
+    setContractorHome();
+    setContractor();
   } else if (stateTask == "completed") {
     setPropertyRequired("NumberContract");
     setPropertyRequired("DateContract");
@@ -301,10 +305,10 @@ function onTaskCommentedSendOutDoc(caseTaskComment) {
 
 //Скрипт 3. Автоматичне визначення email контактної особи Замовника
 function onCreate() {
-  setContractorOnCreate();
+  setContractorRPEmailOnCreate;
 }
 
-function setContractorOnCreate() {
+function setContractorRPEmailOnCreate() {
   debugger;
   try {
     var data = EdocsApi.getInExtAttributes(CurrentDocument.id.toString());
@@ -432,3 +436,40 @@ function sendComment(comment) {
 }
 
 //Скрипт 5. Автоматичне заповнення атрибутів по контрагенту  та домашній організації із довідника при отриманні документу із зовнішньої системи
+function setContractorHome() {
+  try {
+    var attr = EdocsApi.getInExtAttributes(CurrentDocument.id.toString())?.tableAttributes;
+    var dataContractorHome = EdocsApi.getContractorByCode(attr.find((x) => x.row == 1 && x.code == "LegalEntityCode").value, "homeOrganization");
+
+    if (dataContractorHome) {
+      EdocsApi.setAttributeValue({ code: "HomeName", value: dataContractorHome.fullName, text: null });
+      EdocsApi.setAttributeValue({ code: "OrgShortName", value: dataContractorHome.shortName, text: null });
+      EdocsApi.setAttributeValue({ code: "OrgCode", value: dataContractorHome.code, text: null });
+      EdocsApi.setAttributeValue({ code: "HomeOrgIPN", value: dataContractorHome.taxId, text: null });
+      EdocsApi.setAttributeValue({ code: "LegaladdressOrg", value: dataContractorHome.legalAddress, text: null });
+    } else {
+      throw ``;
+    }
+  } catch (error) {
+    EdocsApi.message(`Зверніться до Відповідального від ВДВ для внесення нової домашньої організації в довідник`);
+  }
+}
+
+function setContractor() {
+  try {
+    var attr = EdocsApi.getInExtAttributes(CurrentDocument.id.toString())?.tableAttributes;
+    var dataContractor = EdocsApi.getContractorByCode(attr.find((x) => x.code == "LegalEntityCode").value, "debtor") || EdocsApi.getContractorByCode(attr.find((x) => x.code == "LegalEntityCode").value, "creditor");
+
+    if (dataContractor) {
+      EdocsApi.setAttributeValue({ code: "ContractorFullName", value: dataContractor.fullName, text: null });
+      EdocsApi.setAttributeValue({ code: "ContractorShortName", value: dataContractor.shortName, text: null });
+      EdocsApi.setAttributeValue({ code: "EDRPOUContractor", value: dataContractor.code, text: null });
+      EdocsApi.setAttributeValue({ code: "ContractorIPN", value: dataContractor.taxId, text: null });
+      EdocsApi.setAttributeValue({ code: "LegaladdressContractor", value: dataContractor.legalAddress, text: null });
+    } else {
+      throw ``;
+    }
+  } catch (error) {
+    EdocsApi.message(`Зверніться до Відповідального від ВДВ для внесення нового контрагента в довідник`);
+  }
+}
